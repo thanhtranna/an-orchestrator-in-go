@@ -28,10 +28,13 @@ func (a *Api) initRouter() {
 			r.Delete("/", a.StopTaskHandler)
 		})
 	})
+	a.Router.Route("/stats", func(r chi.Router) {
+		r.Get("/", a.GetStatsHandler)
+	})
 }
 
 func (a *Api) Start() {
 	a.initRouter()
-	fmt.Println("Cube worker running with port: ", a.Port)
+	fmt.Println("Cube worker running with port:", a.Port)
 	http.ListenAndServe(fmt.Sprintf("%s:%d", a.Address, a.Port), a.Router)
 }
