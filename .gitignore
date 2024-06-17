@@ -19,3 +19,8 @@ vendor/
 
 # Go workspace file
 go.work
+
+.vscode
+worker-1.db
+worker-2.db
+worker-3.db

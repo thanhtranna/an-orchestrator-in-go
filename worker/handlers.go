@@ -8,12 +8,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/thanhtranna/an-orchestrator-in-go/stats"
 	"github.com/thanhtranna/an-orchestrator-in-go/task"
 )
 
 func (a *Api) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 	d := json.NewDecoder(r.Body)
-	d.DisallowUnknownFields()
 
 	te := task.TaskEvent{}
 	err := d.Decode(&te)
@@ -42,6 +42,27 @@ func (a *Api) GetTasksHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(a.Worker.GetTasks())
 }
 
+func (a *Api) InspectTaskHandler(w http.ResponseWriter, r *http.Request) {
+	taskID := chi.URLParam(r, "taskID")
+	if taskID == "" {
+		log.Printf("[worker] No taskID passed in request.\n")
+		w.WriteHeader(400)
+	}
+
+	tID, _ := uuid.Parse(taskID)
+	t, err := a.Worker.Db.Get(tID.String())
+	if err != nil {
+		log.Printf("[worker] No task with ID %v found", tID)
+		w.WriteHeader(404)
+		return
+	}
+
+	resp := a.Worker.InspectTask(t.(task.Task))
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	json.NewEncoder(w).Encode(resp.Container)
+}
+
 func (a *Api) StopTaskHandler(w http.ResponseWriter, r *http.Request) {
 	taskID := chi.URLParam(r, "taskID")
 	if taskID == "" {
@@ -67,6 +88,13 @@ func (a *Api) StopTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *Api) GetStatsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	var result *stats.Stats
+	if a.Worker.Stats != nil {
+		result = a.Worker.Stats
+	} else {
+		result = stats.GetStats()
+	}
+
 	w.WriteHeader(200)
-	json.NewEncoder(w).Encode(a.Worker.Stats)
+	json.NewEncoder(w).Encode(result)
 }

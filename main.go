@@ -3,45 +3,34 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"strconv"
 
 	"github.com/thanhtranna/an-orchestrator-in-go/manager"
+	"github.com/thanhtranna/an-orchestrator-in-go/scheduler"
+	"github.com/thanhtranna/an-orchestrator-in-go/store"
 	"github.com/thanhtranna/an-orchestrator-in-go/worker"
 )
 
 func main() {
-	whost := os.Getenv("CUBE_HOST")
-	wport, _ := strconv.Atoi(os.Getenv("CUBE_PORT"))
+	// whost := os.Getenv("CUBE_HOST")
+	// wport, _ := strconv.Atoi(os.Getenv("CUBE_PORT"))
 
-	mhost := os.Getenv("CUBE_MANAGER_HOST")
-	mport, _ := strconv.Atoi(os.Getenv("CUBE_MANAGER_PORT"))
+	// mhost := os.Getenv("CUBE_MANAGER_HOST")
+	// mport, _ := strconv.Atoi(os.Getenv("CUBE_MANAGER_PORT"))
+
+	mhost := "localhost"
+	mport := 5555
+	whost := "localhost"
+	wport := 5556
 
 	log.Println("[application] Starting Cube worker")
-	// w1 := worker.Worker{
-	// 	Queue: *queue.New(),
-	// 	Db:    make(map[uuid.UUID]*task.Task),
-	// }
-	w1 := worker.New("worker-1", "memory")
 
+	w1 := worker.New("worker-1", store.DBTypePersistent)
 	wapi1 := worker.Api{Address: whost, Port: wport, Worker: w1}
 
-	// w2 := worker.Worker{
-	// 	Queue: *queue.New(),
-	// 	Db:    make(map[uuid.UUID]*task.Task),
-	// }
-
-	w2 := worker.New("worker-2", "memory")
-
+	w2 := worker.New("worker-2", store.DBTypePersistent)
 	wapi2 := worker.Api{Address: whost, Port: wport + 1, Worker: w2}
 
-	// w3 := worker.Worker{
-	// 	Queue: *queue.New(),
-	// 	Db:    make(map[uuid.UUID]*task.Task),
-	// }
-
-	w3 := worker.New("worker-3", "memory")
-
+	w3 := worker.New("worker-3", store.DBTypePersistent)
 	wapi3 := worker.Api{Address: whost, Port: wport + 2, Worker: w3}
 
 	go w1.RunTasks()
@@ -66,7 +55,7 @@ func main() {
 		fmt.Sprintf("%s:%d", whost, wport+1),
 		fmt.Sprintf("%s:%d", whost, wport+2),
 	}
-	m := manager.New(workers, "epvm", "memory")
+	m := manager.New(workers, scheduler.SchedulerTypeEPVM, store.DBTypeMemory)
 	mapi := manager.Api{Address: mhost, Port: mport, Manager: m}
 
 	go m.ProcessTasks()
