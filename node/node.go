@@ -40,13 +40,13 @@ func (n *Node) GetStats() (*stats.Stats, error) {
 	url := fmt.Sprintf("%s/stats", n.Api)
 	resp, err = utils.HTTPWithRetry(http.Get, url)
 	if err != nil {
-		msg := fmt.Sprintf("Unable to connect to %v.  Permanent failure.\n", n.Api)
+		msg := fmt.Sprintf("[node] Unable to connect to %v.  Permanent failure.\n", n.Api)
 		log.Println(msg)
 		return nil, errors.New(msg)
 	}
 
-	if resp.StatusCode != 200 {
-		msg := fmt.Sprintf("Error retrieving stats from %v: %v", n.Api, err)
+	if resp.StatusCode != http.StatusOK {
+		msg := fmt.Sprintf("[node] Error retrieving stats from %v: %v", n.Api, err)
 		log.Println(msg)
 		return nil, errors.New(msg)
 	}
@@ -56,13 +56,13 @@ func (n *Node) GetStats() (*stats.Stats, error) {
 	var stats stats.Stats
 	err = json.Unmarshal(body, &stats)
 	if err != nil {
-		msg := fmt.Sprintf("error decoding message while getting stats for node %s", n.Name)
+		msg := fmt.Sprintf("[node] Error decoding message while getting stats for node %s", n.Name)
 		log.Println(msg)
 		return nil, errors.New(msg)
 	}
 
 	if stats.MemStats == nil || stats.DiskStats == nil {
-		return nil, fmt.Errorf("error getting stats from node %s", n.Name)
+		return nil, fmt.Errorf("[node] Error getting stats from node %s", n.Name)
 	}
 
 	n.Memory = int64(stats.MemTotalKb())

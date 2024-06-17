@@ -69,7 +69,7 @@ func GetStats() *Stats {
 func GetMemoryStats() *mem.VirtualMemoryStat {
 	memoryStats, err := mem.VirtualMemory()
 	if err != nil {
-		log.Printf("Error getting memory stats %v\n", err)
+		log.Printf("[stats] Error getting memory stats %v\n", err)
 		return &mem.VirtualMemoryStat{}
 	}
 
@@ -79,7 +79,7 @@ func GetMemoryStats() *mem.VirtualMemoryStat {
 func GetDiskStats() *disk.UsageStat {
 	diskStats, err := disk.Usage("/")
 	if err != nil {
-		log.Printf("Error getting disk stats %v\n", err)
+		log.Printf("[stats] Error getting disk stats %v\n", err)
 		return &disk.UsageStat{}
 	}
 
@@ -89,7 +89,7 @@ func GetDiskStats() *disk.UsageStat {
 func GetCpuStats() *cpu.TimesStat {
 	stats, err := cpu.Times(false)
 	if err != nil {
-		log.Printf("Error getting cpu stats %v\n", err)
+		log.Printf("[stats] Error getting cpu stats %v\n", err)
 		return &cpu.TimesStat{}
 	}
 	if len(stats) == 1 {
@@ -102,7 +102,7 @@ func GetCpuStats() *cpu.TimesStat {
 func GetLoadAvgStats() *load.AvgStat {
 	loadStats, err := load.Avg()
 	if err != nil {
-		log.Printf("Error getting load avg %v\n", err)
+		log.Printf("[stats] Error getting load avg %v\n", err)
 		return &load.AvgStat{}
 	}
 
