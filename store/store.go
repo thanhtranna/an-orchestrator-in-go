@@ -11,6 +11,13 @@ import (
 	"github.com/thanhtranna/an-orchestrator-in-go/task"
 )
 
+type DBType string
+
+const (
+	DBTypeMemory     DBType = "memory"
+	DBTypePersistent DBType = "persistent"
+)
+
 type Store interface {
 	Put(key string, value interface{}) error
 	Get(key string) (interface{}, error)
@@ -18,17 +25,33 @@ type Store interface {
 	Count() (int, error)
 }
 
-type InMemoryTaskStore struct {
+func NewTaskStore(bucketName string, dbType DBType) Store {
+	var ts Store
+	var errTaskDb error
+	switch dbType {
+	case DBTypeMemory:
+		ts = newInMemoryTaskStore()
+	case DBTypePersistent:
+		ts, errTaskDb = newTaskStore(fmt.Sprintf("%s.db", bucketName), 0600, bucketName)
+	}
+	if errTaskDb != nil {
+		log.Fatalf("[manager] Unable to create task store: %v", errTaskDb)
+	}
+
+	return ts
+}
+
+type inMemoryTaskStore struct {
 	Db map[string]*task.Task
 }
 
-func NewInMemoryTaskStore() *InMemoryTaskStore {
-	return &InMemoryTaskStore{
+func newInMemoryTaskStore() Store {
+	return &inMemoryTaskStore{
 		Db: make(map[string]*task.Task),
 	}
 }
 
-func (i *InMemoryTaskStore) Put(key string, value interface{}) error {
+func (i *inMemoryTaskStore) Put(key string, value interface{}) error {
 	t, ok := value.(*task.Task)
 	if !ok {
 		return fmt.Errorf("[store] Value %v is not a task.Task type", value)
@@ -38,7 +61,7 @@ func (i *InMemoryTaskStore) Put(key string, value interface{}) error {
 	return nil
 }
 
-func (i *InMemoryTaskStore) Get(key string) (interface{}, error) {
+func (i *inMemoryTaskStore) Get(key string) (interface{}, error) {
 	t, ok := i.Db[key]
 	if !ok {
 		return nil, fmt.Errorf("[store] Task with key %s does not exist", key)
@@ -47,7 +70,7 @@ func (i *InMemoryTaskStore) Get(key string) (interface{}, error) {
 	return t, nil
 }
 
-func (i *InMemoryTaskStore) List() (interface{}, error) {
+func (i *inMemoryTaskStore) List() (interface{}, error) {
 	var tasks []*task.Task
 	for _, t := range i.Db {
 		tasks = append(tasks, t)
@@ -56,21 +79,21 @@ func (i *InMemoryTaskStore) List() (interface{}, error) {
 	return tasks, nil
 }
 
-func (i *InMemoryTaskStore) Count() (int, error) {
+func (i *inMemoryTaskStore) Count() (int, error) {
 	return len(i.Db), nil
 }
 
-type InMemoryTaskEventStore struct {
+type inMemoryTaskEventStore struct {
 	Db map[string]*task.TaskEvent
 }
 
-func NewInMemoryTaskEventStore() *InMemoryTaskEventStore {
-	return &InMemoryTaskEventStore{
+func newInMemoryTaskEventStore() Store {
+	return &inMemoryTaskEventStore{
 		Db: make(map[string]*task.TaskEvent),
 	}
 }
 
-func (i *InMemoryTaskEventStore) Put(key string, value interface{}) error {
+func (i *inMemoryTaskEventStore) Put(key string, value interface{}) error {
 	e, ok := value.(*task.TaskEvent)
 	if !ok {
 		return fmt.Errorf("[store] Value %v is not a task.TaskEvent type", value)
@@ -79,7 +102,7 @@ func (i *InMemoryTaskEventStore) Put(key string, value interface{}) error {
 	return nil
 }
 
-func (i *InMemoryTaskEventStore) Get(key string) (interface{}, error) {
+func (i *inMemoryTaskEventStore) Get(key string) (interface{}, error) {
 	e, ok := i.Db[key]
 	if !ok {
 		return nil, fmt.Errorf("[store] Task event with key %s does not exist", key)
@@ -88,7 +111,7 @@ func (i *InMemoryTaskEventStore) Get(key string) (interface{}, error) {
 	return e, nil
 }
 
-func (i *InMemoryTaskEventStore) List() (interface{}, error) {
+func (i *inMemoryTaskEventStore) List() (interface{}, error) {
 	var events []*task.TaskEvent
 	for _, e := range i.Db {
 		events = append(events, e)
@@ -96,7 +119,7 @@ func (i *InMemoryTaskEventStore) List() (interface{}, error) {
 	return events, nil
 }
 
-func (i *InMemoryTaskEventStore) Count() (int, error) {
+func (i *inMemoryTaskEventStore) Count() (int, error) {
 	return len(i.Db), nil
 }
 
@@ -107,7 +130,7 @@ type TaskStore struct {
 	Bucket   string
 }
 
-func NewTaskStore(file string, mode os.FileMode, bucket string) (*TaskStore, error) {
+func newTaskStore(file string, mode os.FileMode, bucket string) (*TaskStore, error) {
 	db, err := bolt.Open(file, mode, nil)
 	if err != nil {
 		return nil, fmt.Errorf("[store] Unable to open %v", file)
@@ -125,7 +148,6 @@ func NewTaskStore(file string, mode os.FileMode, bucket string) (*TaskStore, err
 	}
 
 	return &t, nil
-
 }
 
 func (t *TaskStore) Close() {
@@ -221,26 +243,42 @@ func (t *TaskStore) List() (interface{}, error) {
 	return tasks, nil
 }
 
-type EventStore struct {
+func NewTaskEventStore(name string, dbType DBType) Store {
+	var ts Store
+	var errTaskDb error
+	switch dbType {
+	case DBTypeMemory:
+		ts = newInMemoryTaskEventStore()
+	case DBTypePersistent:
+		ts, errTaskDb = newEventStore(fmt.Sprintf("%s.db", name), 0600, name)
+	}
+	if errTaskDb != nil {
+		log.Fatalf("[manager] Unable to create task event store: %v", errTaskDb)
+	}
+
+	return ts
+}
+
+type eventStore struct {
 	DbFile   string
 	FileMode os.FileMode
 	Db       *bolt.DB
 	Bucket   string
 }
 
-func NewEventStore(file string, mode os.FileMode, bucket string) (*EventStore, error) {
+func newEventStore(file string, mode os.FileMode, bucket string) (Store, error) {
 	db, err := bolt.Open(file, mode, nil)
 	if err != nil {
 		return nil, fmt.Errorf("[store] Unable to open %v", file)
 	}
-	e := EventStore{
+	e := eventStore{
 		DbFile:   file,
 		FileMode: mode,
 		Db:       db,
 		Bucket:   bucket,
 	}
 
-	err = e.CreateBucket()
+	err = e.createBucket()
 	if err != nil {
 		log.Printf("[store] Bucket already exists, will use it instead of creating new one")
 	}
@@ -248,11 +286,11 @@ func NewEventStore(file string, mode os.FileMode, bucket string) (*EventStore, e
 	return &e, nil
 }
 
-func (e *EventStore) Close() {
+func (e *eventStore) Close() {
 	e.Db.Close()
 }
 
-func (e *EventStore) CreateBucket() error {
+func (e *eventStore) createBucket() error {
 	return e.Db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucket([]byte(e.Bucket))
 		if err != nil {
@@ -262,7 +300,7 @@ func (e *EventStore) CreateBucket() error {
 		return nil
 	})
 }
-func (e *EventStore) Count() (int, error) {
+func (e *eventStore) Count() (int, error) {
 	eventCount := 0
 	err := e.Db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(e.Bucket))
@@ -279,7 +317,7 @@ func (e *EventStore) Count() (int, error) {
 	return eventCount, nil
 }
 
-func (e *EventStore) Put(key string, value interface{}) error {
+func (e *eventStore) Put(key string, value interface{}) error {
 	return e.Db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(e.Bucket))
 
@@ -297,7 +335,7 @@ func (e *EventStore) Put(key string, value interface{}) error {
 	})
 }
 
-func (e *EventStore) Get(key string) (interface{}, error) {
+func (e *eventStore) Get(key string) (interface{}, error) {
 	var event task.TaskEvent
 	err := e.Db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(e.Bucket))
@@ -318,7 +356,7 @@ func (e *EventStore) Get(key string) (interface{}, error) {
 	return &event, nil
 }
 
-func (e *EventStore) List() (interface{}, error) {
+func (e *eventStore) List() (interface{}, error) {
 	var events []*task.TaskEvent
 	err := e.Db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(e.Bucket))

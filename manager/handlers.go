@@ -14,6 +14,7 @@ import (
 
 func (a *Api) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 	d := json.NewDecoder(r.Body)
+	d.DisallowUnknownFields()
 
 	te := task.TaskEvent{}
 	err := d.Decode(&te)

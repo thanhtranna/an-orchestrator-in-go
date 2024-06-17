@@ -21,17 +21,15 @@ type Worker struct {
 	Stats     *stats.Stats
 }
 
-func New(name string, taskDbType string) *Worker {
+func New(name string, storeType store.DBType) *Worker {
 	w := Worker{
 		Name:  name,
 		Queue: *queue.New(),
+		Db:    store.NewTaskStore(name, storeType),
 	}
-	var s store.Store
-	switch taskDbType {
-	case "memory":
-		s = store.NewInMemoryTaskStore()
-	}
-	w.Db = s
+
+	// s := store.NewTaskStore(name, storeType)
+	// w.Db = s
 	return &w
 }
 

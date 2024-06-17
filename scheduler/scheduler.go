@@ -15,14 +15,35 @@ const (
 	LIEB = 1.53960071783900203869
 )
 
+type SchedulerType string
+
+const (
+	SchedulerTypeEPVM       SchedulerType = "epvm"
+	SchedulerTypeRoundRobin SchedulerType = "roundrobin"
+)
+
 type Scheduler interface {
 	SelectCandidateNodes(t task.Task, nodes []*node.Node) []*node.Node
 	Score(t task.Task, nodes []*node.Node) map[string]float64
 	Pick(scores map[string]float64, candidates []*node.Node) *node.Node
 }
 
+func New(schedulerType SchedulerType) Scheduler {
+	var s Scheduler
+	switch schedulerType {
+	case SchedulerTypeEPVM:
+		s = &Epvm{Name: SchedulerTypeEPVM}
+	case SchedulerTypeRoundRobin:
+		s = &RoundRobin{Name: SchedulerTypeRoundRobin}
+	default:
+		s = &Epvm{Name: SchedulerTypeEPVM}
+	}
+
+	return s
+}
+
 type RoundRobin struct {
-	Name       string
+	Name       SchedulerType
 	LastWorker int
 }
 
@@ -73,7 +94,7 @@ func (r *RoundRobin) Pick(scores map[string]float64, candidates []*node.Node) *n
 }
 
 type Epvm struct {
-	Name string
+	Name SchedulerType
 }
 
 func (e *Epvm) SelectCandidateNodes(t task.Task, nodes []*node.Node) []*node.Node {
