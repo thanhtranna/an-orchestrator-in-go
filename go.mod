@@ -3,6 +3,7 @@ module github.com/thanhtranna/an-orchestrator-in-go
 go 1.22.3
 
 require (
+	github.com/boltdb/bolt v1.3.1
 	github.com/docker/docker v26.1.3+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/go-chi/chi/v5 v5.0.12

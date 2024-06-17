@@ -19,7 +19,7 @@ func (a *Api) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 	err := d.Decode(&te)
 
 	if err != nil {
-		msg := fmt.Sprintf("Error unmarshal body: %v\n", err)
+		msg := fmt.Sprintf("[worker] Error unmarshal body: %v\n", err)
 		log.Println(msg)
 		w.WriteHeader(400)
 		e := ErrResponse{
@@ -31,7 +31,7 @@ func (a *Api) StartTaskHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.Worker.AddTask(te.Task)
-	log.Printf("Added task %v\n", te.Task.ID)
+	log.Printf("[worker] Added task %v\n", te.Task.ID)
 	w.WriteHeader(201)
 	json.NewEncoder(w).Encode(te.Task)
 }
@@ -45,24 +45,23 @@ func (a *Api) GetTasksHandler(w http.ResponseWriter, r *http.Request) {
 func (a *Api) StopTaskHandler(w http.ResponseWriter, r *http.Request) {
 	taskID := chi.URLParam(r, "taskID")
 	if taskID == "" {
-		log.Printf("No taskID passed in request.\n")
+		log.Printf("[worker] No taskID passed in request.\n")
 		w.WriteHeader(400)
 	}
 
 	tID, _ := uuid.Parse(taskID)
-	_, ok := a.Worker.Db[tID]
-	if !ok {
-		log.Printf("No task with ID %v found", tID)
+	taskToStop, err := a.Worker.Db.Get(tID.String())
+	if err != nil {
+		log.Printf("[worker] No task with ID %v found", tID)
 		w.WriteHeader(404)
 	}
 
-	taskToStop := a.Worker.Db[tID]
 	// we need to make a copy so we are not modifying the task in the datastore
-	taskCopy := *taskToStop
+	taskCopy := *taskToStop.(*task.Task)
 	taskCopy.State = task.Completed
 	a.Worker.AddTask(taskCopy)
 
-	log.Printf("Added task %v to stop container %v\n", taskToStop.ID, taskToStop.ContainerID)
+	log.Printf("[worker] Added task %v to stop container %v\n", taskCopy.ID.String(), taskCopy.ContainerID)
 	w.WriteHeader(204)
 }
 
