@@ -9,6 +9,7 @@ import (
 	"github.com/golang-collections/collections/queue"
 	"github.com/google/uuid"
 
+	"github.com/thanhtranna/an-orchestrator-in-go/stats"
 	"github.com/thanhtranna/an-orchestrator-in-go/task"
 )
 
@@ -16,8 +17,8 @@ type Worker struct {
 	Name      string
 	Queue     queue.Queue
 	Db        map[uuid.UUID]*task.Task
-	Stats     *Stats
 	TaskCount int
+	Stats     *stats.Stats
 }
 
 func (w *Worker) GetTasks() []*task.Task {
@@ -32,7 +33,7 @@ func (w *Worker) GetTasks() []*task.Task {
 func (w *Worker) CollectStats() {
 	for {
 		log.Println("Collecting stats")
-		w.Stats = GetStats()
+		w.Stats = stats.GetStats()
 		w.TaskCount = w.Stats.TaskCount
 		time.Sleep(15 * time.Second)
 	}
